@@ -6,16 +6,32 @@ import sys
 
 def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ecom.settings')
-    try:
-        from django.core.management import execute_from_command_line
-    except ImportError as exc:
-        raise ImportError(
-            "Couldn't import Django. Are you sure it's installed and "
-            "available on your PYTHONPATH environment variable? Did you "
-            "forget to activate a virtual environment?"
-        ) from exc
+  
+        
     execute_from_command_line(sys.argv)
 
 
 if __name__ == '__main__':
-    main()
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ecom.settings')
+    #os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'test_project.settings')
+    import django
+    django.setup()
+
+    # Use the runserver addr/port defined in settings.
+    from django.conf import settings
+    default_addr = getattr(settings, 'RUNSERVER_DEFAULT_ADDR', '0.0.0.0')
+    default_port = getattr(settings, 'RUNSERVER_DEFAULT_PORT', 80)
+    from django.core.management.commands import runserver as core_runserver
+    original_handle = core_runserver.Command.handle
+
+    def handle(self, *args, **options):
+        if not options.get('addrport'):
+            options['addrport'] = '%s:%d' % (default_addr, int(default_port))
+        elif options.get('addrport').isdigit():
+            options['addrport'] = '%s:%d' % (default_addr, int(options['addrport']))
+        return original_handle(self, *args, **options)
+
+    core_runserver.Command.handle = handle
+
+    from django.core.management import execute_from_command_line
+    execute_from_command_line(sys.argv)
